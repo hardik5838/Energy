@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Set Altair theme to light
+# Set Altair theme to light for better contrast
 alt.themes.enable("default")
 
 #######################
@@ -36,35 +36,53 @@ def load_data(file_path):
         return pd.DataFrame() # Return empty DataFrame on error
 
 # Provide the correct path to your CSV file
-df = load_data('data/2025 Energy Audit summary - Sheet1 (1).csv')
+df = load_data('2025 Energy Audit summary - Sheet1 (1).csv')
 
 if not df.empty:
 
     #######################
-    # Sidebar Filters
+    # Sidebar Filters with Dependent Dropdowns
     with st.sidebar:
         st.title('⚡ Asepeyo Energy Dashboard')
         
-        # Filter by Autonomous Community
+        # 1. Filter by Autonomous Community
         community_list = ['All'] + sorted(df['Comunidad Autónoma'].unique().tolist())
         selected_community = st.selectbox('Select a Community', community_list)
 
-        # Filter data based on selection
+        # Initialize df_filtered with community selection
         if selected_community == 'All':
             df_filtered = df
+            selected_center = 'All' # No center selection if all communities are shown
         else:
             df_filtered = df[df['Comunidad Autónoma'] == selected_community]
+            
+            # 2. Dependent Filter for Center
+            center_list = ['All'] + sorted(df_filtered['Center'].unique().tolist())
+            selected_center = st.selectbox('Select a Center', center_list)
+
+            # Further filter by center if a specific one is chosen
+            if selected_center != 'All':
+                df_filtered = df_filtered[df_filtered['Center'] == selected_center]
+
 
     #######################
-    # Main Panel
-    st.title(f"Energy Efficiency Analysis: {selected_community}")
+    # Main Panel with Dynamic Title
+    st.title("Energy Efficiency Analysis")
+    # Create a dynamic subheader
+    if selected_community == 'All':
+        st.header("Showing data for All Communities")
+    elif selected_center == 'All':
+        st.header(f"Showing all centers in: {selected_community}")
+    else:
+        st.header(f"Showing data for: {selected_center}")
+
 
     # --- Key Performance Indicators (KPIs) ---
     total_investment = df_filtered['Investment'].sum()
     total_money_saved = df_filtered['Money Saved'].sum()
     total_energy_saved = df_filtered['Energy Saved'].sum()
     
-    # Avoid division by zero
+    # Avoid division by zero for ROI calculation
     if total_investment > 0:
         roi = (total_money_saved / total_investment) * 100
     else:
@@ -86,19 +104,19 @@ if not df.empty:
         # --- Chart 1: Measures required per community/center ---
         st.subheader("Measure Counts")
         if selected_community == 'All':
-            # Chart 1: Measures required per community
-            measures_per_community = df.groupby('Comunidad Autónoma')['Measure'].count().reset_index().rename(columns={'Measure': 'Count'})
+            # Group by community if 'All' is selected
+            measures_count = df.groupby('Comunidad Autónoma')['Measure'].count().reset_index().rename(columns={'Measure': 'Count'})
             fig1 = px.bar(
-                measures_per_community.sort_values('Count', ascending=False),
+                measures_count.sort_values('Count', ascending=False),
                 x='Comunidad Autónoma', y='Count', title='Measures per Community',
                 labels={'Count': 'Number of Measures', 'Comunidad Autónoma': 'Community'},
                 template="plotly_white"
             )
         else:
-            # Chart 3 (adapted): Measures per Center in the selected community
-            measures_per_center = df_filtered.groupby('Center')['Measure'].count().reset_index().rename(columns={'Measure': 'Count'})
+            # Group by center if a community is selected
+            measures_count = df_filtered.groupby('Center')['Measure'].count().reset_index().rename(columns={'Measure': 'Count'})
             fig1 = px.bar(
-                measures_per_center.sort_values('Count', ascending=False),
+                measures_count.sort_values('Count', ascending=False),
                 x='Center', y='Count', title=f'Measures per Center in {selected_community}',
                 labels={'Count': 'Number of Measures'},
                 template="plotly_white"
@@ -106,49 +124,29 @@ if not df.empty:
         st.plotly_chart(fig1, use_container_width=True)
 
         
-        # --- Chart 5: Energy Savings per community ---
+        # --- Chart 5: Energy Savings per community/center ---
         st.subheader("Energy Savings Analysis")
-        energy_savings_community = df_filtered.groupby('Comunidad Autónoma')['Energy Saved'].sum().reset_index()
+        # Adapt grouping based on selection
+        group_by_col = 'Center' if selected_community != 'All' else 'Comunidad Autónoma'
+        energy_savings = df_filtered.groupby(group_by_col)['Energy Saved'].sum().reset_index()
         fig5 = px.bar(
-            energy_savings_community.sort_values('Energy Saved', ascending=False),
-            x='Comunidad Autónoma', y='Energy Saved', title='Energy Savings (kWh) per Community',
-            labels={'Energy Saved': 'Total Energy Saved (kWh)', 'Comunidad Autónoma': 'Community'},
+            energy_savings.sort_values('Energy Saved', ascending=False),
+            x=group_by_col, y='Energy Saved', title=f'Energy Savings (kWh) per {group_by_col.replace("_", " ")}',
+            labels={'Energy Saved': 'Total Energy Saved (kWh)'},
             template="plotly_white"
         )
         st.plotly_chart(fig5, use_container_width=True)
 
 
-        # --- Chart 4: Investment Summary Table ---
-        st.subheader("Investment Summary by Region")
-        regional_investment_summary = df_filtered.groupby('Comunidad Autónoma').agg(
-            Total_Investment=('Investment', 'sum'),
-            Measure_Count=('Measure', 'count')
-        ).reset_index()
-        # Avoid division by zero
-        regional_investment_summary['Average_Investment_per_Measure'] = regional_investment_summary.apply(
-            lambda row: row['Total_Investment'] / row['Measure_Count'] if row['Measure_Count'] > 0 else 0, axis=1
-        )
-        st.dataframe(
-            regional_investment_summary,
-            use_container_width=True,
-            column_config={
-                "Comunidad Autónoma": "Community",
-                "Total_Investment": st.column_config.NumberColumn("Total Investment (€)", format="€ %.2f"),
-                "Measure_Count": "Number of Measures",
-                "Average_Investment_per_Measure": st.column_config.NumberColumn("Avg. Investment/Measure (€)", format="€ %.2f")
-            },
-            hide_index=True
-        )
-
-
     with col2:
-        # --- Chart 6: Economic Savings ---
+        # --- Chart 6: Economic Savings Donut Chart ---
         st.subheader("Economic Savings Analysis")
-        economic_savings_community = df_filtered.groupby('Comunidad Autónoma')['Money Saved'].sum().reset_index()
+        group_by_col = 'Center' if selected_community != 'All' else 'Comunidad Autónoma'
+        economic_savings = df_filtered.groupby(group_by_col)['Money Saved'].sum().reset_index()
         fig6_donut = px.pie(
-            economic_savings_community,
-            names='Comunidad Autónoma', values='Money Saved',
-            title='Contribution to Total Economic Savings',
+            economic_savings,
+            names=group_by_col, values='Money Saved',
+            title=f'Contribution to Economic Savings by {group_by_col.replace("_", " ")}',
             hole=0.4,
             template="plotly_white"
         )
@@ -157,45 +155,46 @@ if not df.empty:
         
         # --- Chart 7: Investment vs. Savings Scatter Plot ---
         st.subheader("Investment vs. Financial Savings")
-        financial_summary = df_filtered.groupby('Comunidad Autónoma').agg(
+        group_by_col = 'Center' if selected_community != 'All' else 'Comunidad Autónoma'
+        financial_summary = df_filtered.groupby(group_by_col).agg(
             Total_Investment=('Investment', 'sum'),
             Total_Money_Saved=('Money Saved', 'sum')
         ).reset_index()
         fig7 = px.scatter(
             financial_summary,
             x='Total_Investment', y='Total_Money_Saved',
-            text='Comunidad Autónoma',
+            text=group_by_col,
             size='Total_Investment',
-            color='Comunidad Autónoma',
-            title='Total Investment vs. Total Money Saved per Community',
+            color=group_by_col,
+            title=f'Investment vs. Money Saved per {group_by_col.replace("_", " ")}',
             labels={'Total_Investment': 'Total Investment (€)', 'Total_Money_Saved': 'Total Money Saved (€)'},
             template="plotly_white"
         )
         fig7.update_traces(textposition='top center')
         st.plotly_chart(fig7, use_container_width=True)
-
-
-    # --- Extra Charts (Specific for Madrid or other selections) ---
-    if selected_community == 'Madrid':
-        st.markdown("---")
-        st.subheader("Detailed Analysis for Madrid")
-        df_madrid = df_filtered.copy()
         
-        total_energy_saved_madrid = df_madrid['Energy Saved'].sum()
-        if total_energy_saved_madrid > 0:
-            df_madrid['Energy_Saving_Percent'] = (df_madrid['Energy Saved'] / total_energy_saved_madrid) * 100
-        else:
-            df_madrid['Energy_Saving_Percent'] = 0
+    # --- Chart 4: Investment Summary Table (at the bottom for more space) ---
+    st.markdown("---")
+    st.subheader("Investment Summary")
+    group_by_col = 'Center' if selected_community != 'All' else 'Comunidad Autónoma'
+    regional_investment_summary = df_filtered.groupby(group_by_col).agg(
+        Total_Investment=('Investment', 'sum'),
+        Measure_Count=('Measure', 'count')
+    ).reset_index()
+    regional_investment_summary['Average_Investment_per_Measure'] = regional_investment_summary.apply(
+        lambda row: row['Total_Investment'] / row['Measure_Count'] if row['Measure_Count'] > 0 else 0, axis=1
+    )
+    st.dataframe(
+        regional_investment_summary,
+        use_container_width=True,
+        column_config={
+            "Total_Investment": st.column_config.NumberColumn("Total Investment (€)", format="€ %.2f"),
+            "Measure_Count": "Number of Measures",
+            "Average_Investment_per_Measure": st.column_config.NumberColumn("Avg. Investment/Measure (€)", format="€ %.2f")
+        },
+        hide_index=True
+    )
 
-        extra_fig1 = px.scatter(
-            df_madrid,
-            x='Investment', y='Energy_Saving_Percent',
-            hover_data=['Measure', 'Center'],
-            title='Investment vs. Contribution to Energy Savings (Madrid)',
-            labels={'Investment': 'Investment (€)', 'Energy_Saving_Percent': 'Contribution to Madrid\'s Energy Savings (%)'},
-            template="plotly_white"
-        )
-        st.plotly_chart(extra_fig1, use_container_width=True)
 
 else:
     st.warning("Data could not be loaded. Please check the file path and try again.")
