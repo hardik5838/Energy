@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-alt.themes.enable("dark")
+alt.themes.enable("blue")
 
 #######################
 # Load and process data
