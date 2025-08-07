@@ -14,6 +14,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Set Altair theme to light
+alt.themes.enable("default")
 
 #######################
 # Load and process data
@@ -34,7 +36,7 @@ def load_data(file_path):
         return pd.DataFrame() # Return empty DataFrame on error
 
 # Provide the correct path to your CSV file
-df = load_data('data/2025 Energy Audit summary - Sheet1 (1).csv')
+df = load_data('2025 Energy Audit summary - Sheet1 (1).csv')
 
 if not df.empty:
 
@@ -89,7 +91,8 @@ if not df.empty:
             fig1 = px.bar(
                 measures_per_community.sort_values('Count', ascending=False),
                 x='Comunidad Autónoma', y='Count', title='Measures per Community',
-                labels={'Count': 'Number of Measures', 'Comunidad Autónoma': 'Community'}
+                labels={'Count': 'Number of Measures', 'Comunidad Autónoma': 'Community'},
+                template="plotly_white"
             )
         else:
             # Chart 3 (adapted): Measures per Center in the selected community
@@ -97,7 +100,8 @@ if not df.empty:
             fig1 = px.bar(
                 measures_per_center.sort_values('Count', ascending=False),
                 x='Center', y='Count', title=f'Measures per Center in {selected_community}',
-                labels={'Count': 'Number of Measures'}
+                labels={'Count': 'Number of Measures'},
+                template="plotly_white"
             )
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -108,7 +112,8 @@ if not df.empty:
         fig5 = px.bar(
             energy_savings_community.sort_values('Energy Saved', ascending=False),
             x='Comunidad Autónoma', y='Energy Saved', title='Energy Savings (kWh) per Community',
-            labels={'Energy Saved': 'Total Energy Saved (kWh)', 'Comunidad Autónoma': 'Community'}
+            labels={'Energy Saved': 'Total Energy Saved (kWh)', 'Comunidad Autónoma': 'Community'},
+            template="plotly_white"
         )
         st.plotly_chart(fig5, use_container_width=True)
 
@@ -144,7 +149,8 @@ if not df.empty:
             economic_savings_community,
             names='Comunidad Autónoma', values='Money Saved',
             title='Contribution to Total Economic Savings',
-            hole=0.4
+            hole=0.4,
+            template="plotly_white"
         )
         st.plotly_chart(fig6_donut, use_container_width=True)
 
@@ -162,7 +168,8 @@ if not df.empty:
             size='Total_Investment',
             color='Comunidad Autónoma',
             title='Total Investment vs. Total Money Saved per Community',
-            labels={'Total_Investment': 'Total Investment (€)', 'Total_Money_Saved': 'Total Money Saved (€)'}
+            labels={'Total_Investment': 'Total Investment (€)', 'Total_Money_Saved': 'Total Money Saved (€)'},
+            template="plotly_white"
         )
         fig7.update_traces(textposition='top center')
         st.plotly_chart(fig7, use_container_width=True)
@@ -185,7 +192,8 @@ if not df.empty:
             x='Investment', y='Energy_Saving_Percent',
             hover_data=['Measure', 'Center'],
             title='Investment vs. Contribution to Energy Savings (Madrid)',
-            labels={'Investment': 'Investment (€)', 'Energy_Saving_Percent': 'Contribution to Madrid\'s Energy Savings (%)'}
+            labels={'Investment': 'Investment (€)', 'Energy_Saving_Percent': 'Contribution to Madrid\'s Energy Savings (%)'},
+            template="plotly_white"
         )
         st.plotly_chart(extra_fig1, use_container_width=True)
 
