@@ -8,8 +8,8 @@ import plotly.express as px
 #######################
 # Page configuration
 st.set_page_config(
-    page_title="US Population Dashboard",
-    page_icon="🏂",
+    page_title="Asepeyo Energy Dashboard",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded")
 
@@ -67,23 +67,18 @@ st.markdown("""
 
 #######################
 # Load data
-df_reshaped = pd.read_csv('data/us-population-2010-2019-reshaped.csv')
+df_reshaped = pd.read_csv('data/2025 Energy Audit summary - Sheet1 (1).csv')
 
 
 #######################
 # Sidebar
 with st.sidebar:
-    st.title('🏂 US Population Dashboard')
+    st.title(' Asepeyo Energy Dashboard ⚡')
     
-    year_list = list(df_reshaped.year.unique())[::-1]
-    
-    selected_year = st.selectbox('Select a year', year_list)
-    df_selected_year = df_reshaped[df_reshaped.year == selected_year]
-    df_selected_year_sorted = df_selected_year.sort_values(by="population", ascending=False)
-
-    color_theme_list = ['blues', 'cividis', 'greens', 'inferno', 'magma', 'plasma', 'reds', 'rainbow', 'turbo', 'viridis']
-    selected_color_theme = st.selectbox('Select a color theme', color_theme_list)
-
+    Center_list = list(df_reshaped.center.unique())[::-1]
+    Selected_Center = st.selectbox('Select a Center', Center_list)
+    df_Selected_Center = df_reshaped[df_reshaped.year == Selected_Center]
+    df_Selected_Center_sorted = df_Selected_Center
 
 #######################
 # Plots
@@ -110,7 +105,7 @@ def make_heatmap(input_df, input_y, input_x, input_color, input_color_theme):
 def make_choropleth(input_df, input_id, input_column, input_color_theme):
     choropleth = px.choropleth(input_df, locations=input_id, color=input_column, locationmode="USA-states",
                                color_continuous_scale=input_color_theme,
-                               range_color=(0, max(df_selected_year.population)),
+                               range_color=(0, max(df_Selected_Center.population)),
                                scope="usa",
                                labels={'population':'Population'}
                               )
@@ -177,10 +172,10 @@ def format_number(num):
 
 # Calculation year-over-year population migrations
 def calculate_population_difference(input_df, input_year):
-  selected_year_data = input_df[input_df['year'] == input_year].reset_index()
+  Selected_Center_data = input_df[input_df['year'] == input_year].reset_index()
   previous_year_data = input_df[input_df['year'] == input_year - 1].reset_index()
-  selected_year_data['population_difference'] = selected_year_data.population.sub(previous_year_data.population, fill_value=0)
-  return pd.concat([selected_year_data.states, selected_year_data.id, selected_year_data.population, selected_year_data.population_difference], axis=1).sort_values(by="population_difference", ascending=False)
+  Selected_Center_data['population_difference'] = Selected_Center_data.population.sub(previous_year_data.population, fill_value=0)
+  return pd.concat([Selected_Center_data.states, Selected_Center_data.id, Selected_Center_data.population, Selected_Center_data.population_difference], axis=1).sort_values(by="population_difference", ascending=False)
 
 
 #######################
@@ -190,9 +185,9 @@ col = st.columns((1.5, 4.5, 2), gap='medium')
 with col[0]:
     st.markdown('#### Gains/Losses')
 
-    df_population_difference_sorted = calculate_population_difference(df_reshaped, selected_year)
+    df_population_difference_sorted = calculate_population_difference(df_reshaped, Selected_Center)
 
-    if selected_year > 2010:
+    if Selected_Center > 2010:
         first_state_name = df_population_difference_sorted.states.iloc[0]
         first_state_population = format_number(df_population_difference_sorted.population.iloc[0])
         first_state_delta = format_number(df_population_difference_sorted.population_difference.iloc[0])
@@ -202,7 +197,7 @@ with col[0]:
         first_state_delta = ''
     st.metric(label=first_state_name, value=first_state_population, delta=first_state_delta)
 
-    if selected_year > 2010:
+    if Selected_Center > 2010:
         last_state_name = df_population_difference_sorted.states.iloc[-1]
         last_state_population = format_number(df_population_difference_sorted.population.iloc[-1])   
         last_state_delta = format_number(df_population_difference_sorted.population_difference.iloc[-1])   
@@ -215,7 +210,7 @@ with col[0]:
     
     st.markdown('#### States Migration')
 
-    if selected_year > 2010:
+    if Selected_Center > 2010:
         # Filter states with population difference > 50000
         # df_greater_50000 = df_population_difference_sorted[df_population_difference_sorted.population_difference_absolute > 50000]
         df_greater_50000 = df_population_difference_sorted[df_population_difference_sorted.population_difference > 50000]
@@ -242,7 +237,7 @@ with col[0]:
 with col[1]:
     st.markdown('#### Total Population')
     
-    choropleth = make_choropleth(df_selected_year, 'states_code', 'population', selected_color_theme)
+    choropleth = make_choropleth(df_Selected_Center, 'states_code', 'population', selected_color_theme)
     st.plotly_chart(choropleth, use_container_width=True)
     
     heatmap = make_heatmap(df_reshaped, 'year', 'states', 'population', selected_color_theme)
@@ -252,7 +247,7 @@ with col[1]:
 with col[2]:
     st.markdown('#### Top States')
 
-    st.dataframe(df_selected_year_sorted,
+    st.dataframe(df_Selected_Center_sorted,
                  column_order=("states", "population"),
                  hide_index=True,
                  width=None,
@@ -264,7 +259,7 @@ with col[2]:
                         "Population",
                         format="%f",
                         min_value=0,
-                        max_value=max(df_selected_year_sorted.population),
+                        max_value=max(df_Selected_Center_sorted.population),
                      )}
                  )
     
